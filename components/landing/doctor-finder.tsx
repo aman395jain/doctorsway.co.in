@@ -7,7 +7,6 @@ import DoctorResults from "@/components/landing/doctor-results";
 import SearchControls, {
   type QuickFilter,
 } from "@/components/landing/search-controls";
-import SiteHeader from "@/components/landing/site-header";
 
 export default function DoctorFinder() {
   const [location, setLocation] = useState("Indiranagar, Bengaluru");
@@ -102,7 +101,6 @@ export default function DoctorFinder() {
 
   return (
     <div className="page-shell" id="top">
-      <SiteHeader />
       <main>
         <section className="finder-intro" id="find-doctors">
           <div className="content-width">
@@ -142,9 +140,6 @@ export default function DoctorFinder() {
           specialty={specialty}
         />
       </main>
-      <footer className="site-footer">
-        © 2026 doctorsway.co.in · Your care, closer to home.
-      </footer>
     </div>
   );
 }

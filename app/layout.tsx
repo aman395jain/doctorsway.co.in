@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SiteHeader from "@/components/landing/site-header";
 
 export const metadata: Metadata = {
   title: "Find trusted doctors near you | doctorsway.co.in",
@@ -14,7 +15,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+      <SiteHeader />
+        {children}
+      <footer className="site-footer">
+        © 2026 doctorsway.co.in · Your care, closer to home.
+      </footer>
+      </body>
     </html>
   );
 }

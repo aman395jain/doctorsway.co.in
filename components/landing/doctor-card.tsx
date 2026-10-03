@@ -61,13 +61,13 @@ export default function DoctorCard({ doctor, onBook }: DoctorCardProps) {
             {doctor.nextAvailable}
           </span>
         </div>
-        <button
+        {/* <button
           className="button button-primary book-button"
           onClick={() => onBook(doctor)}
           type="button"
         >
           Book Appointment
-        </button>
+        </button> */}
       </div>
     </article>
   );

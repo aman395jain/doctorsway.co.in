@@ -20,7 +20,6 @@ type SearchControlsProps = {
 const quickFilters: { id: QuickFilter; label: string; icon: "clock" | "star" | "stethoscope" | "send" }[] = [
   { id: "today", label: "Available Today", icon: "clock" },
   { id: "rated", label: "Top Rated", icon: "star" },
-  { id: "teleconsult", label: "Teleconsultation", icon: "stethoscope" },
   { id: "nearby", label: "Within 5 km", icon: "send" },
 ];
 
