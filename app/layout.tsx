@@ -17,7 +17,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
       <SiteHeader />
-        {children}
+        <section className="content-container" aria-label="Main content">
+          {children}
+        </section>
       <footer className="site-footer">
         © 2026 doctorsway.co.in · Your care, closer to home.
       </footer>
