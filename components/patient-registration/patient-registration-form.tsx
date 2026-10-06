@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
   type FormEvent,
 } from "react";
 import Icon from "@/components/landing/icons";
@@ -33,10 +34,43 @@ function getFormattedCaretPosition(value: string, digitCount: number) {
   return position;
 }
 
+function getFieldError(
+  field: HTMLInputElement | HTMLSelectElement,
+  value = field.value,
+) {
+  if (field.name === "mobile") {
+    return /^[6-9][0-9]{2}-[0-9]{3}-[0-9]{4}$/.test(value)
+      ? ""
+      : field.title;
+  }
+
+  if (field.validity.valid) {
+    return "";
+  }
+
+  if (field.validity.valueMissing) {
+    return field.name === "terms"
+      ? "Please agree to the Terms & Conditions and Privacy Policy."
+      : `Please enter your ${field.name === "name" ? "full name" : field.labels?.[0]?.textContent?.trim().toLowerCase() ?? field.name}.`;
+  }
+
+  if (field.validity.typeMismatch) {
+    return "Enter a valid email address.";
+  }
+
+  if (field.validity.patternMismatch) {
+    return field.title || "Please enter a valid value.";
+  }
+
+  return field.validationMessage;
+}
+
 export default function PatientRegistrationForm() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [notice, setNotice] = useState("");
   const [mobile, setMobile] = useState({ digits: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const pendingMobileCaret = useRef<number | null>(null);
 
@@ -53,8 +87,9 @@ export default function PatientRegistrationForm() {
   }, [mobile]);
 
   function handleMobileChange(event: ChangeEvent<HTMLInputElement>) {
-    const inputValue = event.currentTarget.value;
-    const selectionStart = event.currentTarget.selectionStart ?? inputValue.length;
+    const field = event.currentTarget;
+    const inputValue = field?.value;
+    const selectionStart = field?.selectionStart ?? inputValue?.length;
     const digitsBeforeCaret = inputValue
       .slice(0, selectionStart)
       .replace(/[^0-9]/g, "").length;
@@ -68,45 +103,121 @@ export default function PatientRegistrationForm() {
       Math.min(digitsBeforeCaret, nextDigits.length),
     );
     setMobile({ digits: nextDigits });
+
+    if (touched.has(field?.name)) {
+      setErrors((current) => ({
+        ...current,
+        mobile: getFieldError(field, formattedValue),
+      }));
+    }
+  }
+
+  function handleFieldChange(
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) {
+    const field = event.currentTarget;
+    if (touched.has(field.name)) {
+      setErrors((current) => ({
+        ...current,
+        [field.name]: getFieldError(field),
+      }));
+    }
+  }
+
+  function handleFieldBlur(
+    event: FocusEvent<HTMLInputElement | HTMLSelectElement>,
+  ) {
+    const field = event.currentTarget;
+    setTouched((current) => new Set(current).add(field.name));
+    setErrors((current) => ({
+      ...current,
+      [field.name]: getFieldError(field),
+    }));
+  }
+
+  function renderFieldError(name: string) {
+    if (!errors[name]) {
+      return null;
+    }
+
+    return (
+      <p className="registration-field-error" id={`patient-${name}-error`}>
+        {errors[name]}
+      </p>
+    );
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const fields = Array.from(
+      event.currentTarget.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+        "input, select",
+      ),
+    );
+    const nextErrors = Object.fromEntries(
+      fields.map((field) => [field.name, getFieldError(field)]),
+    );
+    setTouched(new Set(fields.map((field) => field.name)));
+    setErrors(nextErrors);
+
+    const firstInvalidField = fields.find((field) => nextErrors[field.name]);
+    if (firstInvalidField) {
+      setNotice("");
+      firstInvalidField.focus();
+      return;
+    }
+
     setNotice(
       "Registration is not connected yet, so your details have not been sent.",
     );
   }
 
   return (
-    <form className="patient-registration-form" onSubmit={handleSubmit}>
+    <form
+      className="patient-registration-form"
+      noValidate
+      onSubmit={handleSubmit}
+    >
       <div className="registration-field">
         <label htmlFor="patient-name">Full Name</label>
-        <div className="registration-input">
+        <div
+          className={`registration-input${errors.name ? " registration-input-error" : ""}`}
+        >
           <span className="registration-input-icon">
             <span className="registration-person-icon" />
           </span>
           <input
+            aria-describedby={errors.name ? "patient-name-error" : undefined}
+            aria-invalid={Boolean(errors.name)}
             autoComplete="name"
             id="patient-name"
             name="name"
+            onBlur={handleFieldBlur}
+            onChange={handleFieldChange}
             placeholder="Enter your full name"
             required
           />
         </div>
+        {renderFieldError("name")}
       </div>
 
       <div className="registration-field">
         <label htmlFor="patient-mobile">Mobile Number</label>
-        <div className="registration-input registration-input-phone">
+        <div
+          className={`registration-input registration-input-phone${errors.mobile ? " registration-input-error" : ""}`}
+        >
           <span aria-hidden="true" className="registration-input-icon">
             <span className="registration-phone-icon" />
           </span>
           <span className="registration-country-code">+91</span>
           <input
+            aria-describedby={errors.mobile ? "patient-mobile-error" : undefined}
+            aria-invalid={Boolean(errors.mobile)}
             autoComplete="tel-national"
             id="patient-mobile"
             inputMode="numeric"
             name="mobile"
+            onBlur={handleFieldBlur}
             onChange={handleMobileChange}
             pattern="[6-9][0-9]{2}-[0-9]{3}-[0-9]{4}"
             placeholder="987-654-3210"
@@ -128,38 +239,55 @@ export default function PatientRegistrationForm() {
             Send OTP
           </button>
         </div>
+        {renderFieldError("mobile")}
       </div>
 
       <div className="registration-field">
         <label htmlFor="patient-email">Email ID</label>
-        <div className="registration-input">
+        <div
+          className={`registration-input${errors.email ? " registration-input-error" : ""}`}
+        >
           <span className="registration-input-icon">
             <span className="registration-mail-icon" />
           </span>
           <input
+            aria-describedby={errors.email ? "patient-email-error" : undefined}
+            aria-invalid={Boolean(errors.email)}
             autoComplete="email"
             id="patient-email"
             name="email"
+            onBlur={handleFieldBlur}
+            onChange={handleFieldChange}
             placeholder="you@example.com"
-            required
             type="email"
           />
         </div>
+        {renderFieldError("email")}
       </div>
 
       <div className="registration-field">
         <label htmlFor="patient-password">Password</label>
-        <div className="registration-input">
+        <div
+          className={`registration-input${errors.password ? " registration-input-error" : ""}`}
+        >
           <span className="registration-input-icon">
             <span className="registration-lock-icon" />
           </span>
           <input
+            aria-describedby={
+              errors.password ? "patient-password-error" : undefined
+            }
+            aria-invalid={Boolean(errors.password)}
             autoComplete="new-password"
             id="patient-password"
             minLength={8}
             name="password"
+            onBlur={handleFieldBlur}
+            onChange={handleFieldChange}
+            pattern="(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s]).{8,}"
             placeholder="Create a strong password"
             required
+            title="Use at least 8 characters, including one uppercase letter, one lowercase letter, one number, and one special character."
             type={passwordVisible ? "text" : "password"}
           />
           <button
@@ -172,6 +300,7 @@ export default function PatientRegistrationForm() {
             {passwordVisible ? "Hide" : "Show"}
           </button>
         </div>
+        {renderFieldError("password")}
       </div>
 
       <div className="registration-field-row">
@@ -184,11 +313,22 @@ export default function PatientRegistrationForm() {
         </div> */}
         <div className="registration-field">
           <label htmlFor="patient-gender">Gender</label>
-          <div className="registration-input registration-select">
+          <div
+            className={`registration-input registration-select${errors.gender ? " registration-input-error" : ""}`}
+          >
             <span className="registration-input-icon">
               <span className="registration-person-icon" />
             </span>
-            <select defaultValue="" id="patient-gender" name="gender" required>
+            <select
+              aria-describedby={errors.gender ? "patient-gender-error" : undefined}
+              aria-invalid={Boolean(errors.gender)}
+              defaultValue=""
+              id="patient-gender"
+              name="gender"
+              onBlur={handleFieldBlur}
+              onChange={handleFieldChange}
+              required
+            >
               <option disabled value="">
                 Select gender
               </option>
@@ -198,19 +338,26 @@ export default function PatientRegistrationForm() {
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </div>
+          {renderFieldError("gender")}
         </div>
         <div className="registration-field">
           <label htmlFor="patient-pincode">Location / Pincode</label>
-          <div className="registration-input registration-input-location">
+          <div
+            className={`registration-input registration-input-location${errors.pincode ? " registration-input-error" : ""}`}
+          >
             <span className="registration-input-icon">
               <Icon name="pin" size={17} />
             </span>
             <input
+              aria-describedby={errors.pincode ? "patient-pincode-error" : undefined}
+              aria-invalid={Boolean(errors.pincode)}
               autoComplete="postal-code"
               id="patient-pincode"
               inputMode="numeric"
               maxLength={6}
               name="pincode"
+              onBlur={handleFieldBlur}
+              onChange={handleFieldChange}
               pattern="[1-9][0-9]{5}"
               placeholder="Enter area or 6-digit pincode"
               required
@@ -226,16 +373,28 @@ export default function PatientRegistrationForm() {
               Detect
             </button>
           </div>
+          {renderFieldError("pincode")}
         </div>
       </div>
 
-      <label className="registration-consent">
-        <input name="terms" required type="checkbox" />
-        <span>
-          I agree to the <a href="#terms">Terms &amp; Conditions</a> and{" "}
-          <a href="#privacy">Privacy Policy</a>.
-        </span>
-      </label>
+      <div>
+        <label className="registration-consent">
+          <input
+            aria-describedby={errors.terms ? "patient-terms-error" : undefined}
+            aria-invalid={Boolean(errors.terms)}
+            name="terms"
+            onBlur={handleFieldBlur}
+            onChange={handleFieldChange}
+            required
+            type="checkbox"
+          />
+          <span>
+            I agree to the <a href="#terms">Terms &amp; Conditions</a> and{" "}
+            <a href="#privacy">Privacy Policy</a>.
+          </span>
+        </label>
+        {renderFieldError("terms")}
+      </div>
 
       <button className="registration-submit" type="submit">
         Create Account <span aria-hidden="true">→</span>

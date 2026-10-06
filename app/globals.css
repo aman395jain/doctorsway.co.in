@@ -1220,6 +1220,12 @@ body:has(.patient-registration-page) .site-header {
   box-shadow: 0 0 0 2px rgb(8 102 245 / 10%);
 }
 
+.registration-input-error,
+.registration-input-error:focus-within {
+  border-color: #d14343;
+  box-shadow: 0 0 0 2px rgb(209 67 67 / 10%);
+}
+
 .registration-input-icon {
   flex: 0 0 17px;
   width: 17px;
@@ -1382,6 +1388,13 @@ body:has(.patient-registration-page) .site-header {
   font-size: 10px;
 }
 
+.registration-field-error {
+  margin: 5px 0 0;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .registration-field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1404,6 +1417,10 @@ body:has(.patient-registration-page) .site-header {
   height: 18px;
   margin: 0;
   accent-color: var(--blue);
+}
+
+.registration-consent input[aria-invalid="true"] {
+  accent-color: #d14343;
 }
 
 .registration-submit {
